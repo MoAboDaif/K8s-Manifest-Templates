@@ -1,0 +1,8 @@
+apiVersion: storage.k8s.io/v1
+kind: CSINode
+metadata:
+  name: {{node_name}}
+spec:
+  drivers:
+    - name: {{driver_name}}
+      nodeID: {{node_id}}

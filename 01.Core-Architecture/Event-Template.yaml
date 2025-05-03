@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Event
+metadata:
+  name: {{event_name}}
+  namespace: {{namespace}}
+reason: "{{reason}}"
+message: "{{message}}"
+involvedObject:
+  kind: Pod
+  name: {{pod_name}}
