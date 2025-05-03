@@ -17,7 +17,7 @@ This repository contains a collection of reusable **Kubernetes manifest template
 
 ```text
 ../K8s-Manifest-Templates
-├── 00.README.md
+├── README.md
 ├── 01.Core-Architecture
 │   ├── README.md
 │   ├── manifests
