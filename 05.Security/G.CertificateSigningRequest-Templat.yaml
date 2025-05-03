@@ -1,0 +1,12 @@
+apiVersion: certificates.k8s.io/v1
+kind: CertificateSigningRequest
+metadata:
+  name: {{csr_name}}
+spec:
+  request: {{base64_encoded_pem_csr}}  # Replace with a base64 encoded CSR string
+  signerName: kubernetes.io/kube-apiserver-client  # Change as needed for your use case
+  expirationSeconds: 86400  # Duration in seconds (optional)
+  usages:
+    - digital signature
+    - key encipherment
+    - client auth

@@ -1,0 +1,27 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge-node
+  namespace: kubeedge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: edge-node
+  template:
+    metadata:
+      labels:
+        app: edge-node
+    spec:
+      containers:
+      - name: edgecore
+        image: kubeedge/edgecore:latest
+        command: ["edgecore"]
+        args:
+        - --cloudcore-url={{cloudcore_url}}
+        - --edge-status-sync-interval=60
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName

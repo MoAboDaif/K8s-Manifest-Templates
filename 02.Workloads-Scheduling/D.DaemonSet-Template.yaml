@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{daemonset_name}}
+  namespace: {{namespace}}
+  labels:
+    app: {{daemonset_name}}
+spec:
+  selector:
+    matchLabels:
+      app: {{daemonset_name}}
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+  template:
+    metadata:
+      labels:
+        app: {{daemonset_name}}
+    spec:
+      tolerations:
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: {{container_name}}
+        image: {{image}}
+        ports:
+        - containerPort: {{container_port}}
+        env:
+        - name: ENV_VAR
+          value: "value"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "200m"
+            memory: "256Mi"

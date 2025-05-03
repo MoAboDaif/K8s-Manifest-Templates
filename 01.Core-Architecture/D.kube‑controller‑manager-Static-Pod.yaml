@@ -1,0 +1,39 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: kube-controller-manager-{{node_name}}
+  namespace: kube-system
+  labels:
+    component: kube-controller-manager
+    tier: control-plane
+spec:
+  hostNetwork: true
+  priorityClassName: system-node-critical
+  containers:
+  - name: kube-controller-manager
+    image: k8s.gcr.io/kube-controller-manager:{{k8s_version}}
+    command:
+      - kube-controller-manager
+      - --cluster-name={{cluster_name}}
+      - --allocate-node-cidrs=true
+      - --cluster-cidr={{cluster_cidr}}
+      - --service-cluster-ip-range={{service_cluster_ip_range}}
+      - --kubeconfig=/etc/kubernetes/controller-manager.conf
+      - --leader-elect=true
+      - --root-ca-file=/etc/kubernetes/pki/ca.crt
+      - --service-account-private-key-file=/etc/kubernetes/pki/sa.key
+      - --v=2
+    volumeMounts:
+    - name: config
+      mountPath: /etc/kubernetes
+      readOnly: true
+    - name: certs
+      mountPath: /etc/kubernetes/pki
+      readOnly: true
+  volumes:
+  - name: config
+    hostPath:
+      path: /etc/kubernetes
+  - name: certs
+    hostPath:
+      path: /etc/kubernetes/pki

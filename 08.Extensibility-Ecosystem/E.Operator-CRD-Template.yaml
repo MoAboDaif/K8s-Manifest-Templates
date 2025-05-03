@@ -1,0 +1,28 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: {{crd_plural}}.{{crd_group}}
+spec:
+  group: {{crd_group}}
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              field1:
+                type: string
+              field2:
+                type: integer
+  scope: Namespaced
+  names:
+    plural: {{crd_plural}}
+    singular: {{crd_singular}}
+    kind: {{crd_kind}}
+    shortNames:
+    - {{crd_short}}

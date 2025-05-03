@@ -1,0 +1,32 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{network_policy_name}}
+  namespace: {{namespace}}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{app_label}}
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          role: frontend
+    - namespaceSelector:
+        matchLabels:
+          project: myproject
+    ports:
+    - protocol: TCP
+      port: {{ingress_port}}
+  egress:
+  - to:
+    - ipBlock:
+        cidr: 10.0.0.0/24
+        except:
+        - 10.0.0.5/32
+    ports:
+    - protocol: TCP
+      port: {{egress_port}}

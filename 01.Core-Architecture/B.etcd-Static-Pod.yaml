@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: etcd-{{node_name}}
+  namespace: kube-system
+  labels:
+    component: etcd
+    tier: control-plane
+spec:
+  hostNetwork: true
+  priorityClassName: system-cluster-critical
+  containers:
+  - name: etcd
+    image: k8s.gcr.io/etcd:{{etcd_version}}
+    command:
+      - etcd
+      - --data-dir=/var/lib/etcd
+      - --name={{node_name}}
+      - --cert-file=/etc/kubernetes/pki/etcd/server.crt
+      - --key-file=/etc/kubernetes/pki/etcd/server.key
+      - --peer-cert-file=/etc/kubernetes/pki/etcd/peer.crt
+      - --peer-key-file=/etc/kubernetes/pki/etcd/peer.key
+      - --trusted-ca-file=/etc/kubernetes/pki/etcd/ca.crt
+      - --peer-trusted-ca-file=/etc/kubernetes/pki/etcd/peer-ca.crt
+      - --initial-advertise-peer-urls=https://{{advertise_peer_url}}:2380
+      - --listen-peer-urls=https://0.0.0.0:2380
+      - --listen-client-urls=https://0.0.0.0:2379
+      - --advertise-client-urls=https://{{advertise_client_url}}:2379
+      - --initial-cluster={{initial_cluster}}
+      - --initial-cluster-state={{initial_cluster_state}}
+    ports:
+    - containerPort: 2379
+    - containerPort: 2380
+    volumeMounts:
+    - name: etcd-data
+      mountPath: /var/lib/etcd
+    - name: etcd-certs
+      mountPath: /etc/kubernetes/pki/etcd
+      readOnly: true
+  volumes:
+  - name: etcd-data
+    hostPath:
+      path: /var/lib/etcd
+  - name: etcd-certs
+    hostPath:
+      path: /etc/kubernetes/pki/etcd

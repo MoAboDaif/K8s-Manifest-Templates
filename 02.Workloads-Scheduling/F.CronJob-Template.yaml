@@ -1,0 +1,35 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{cronjob_name}}
+  namespace: {{namespace}}
+  labels:
+    cronjob: {{cronjob_name}}
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Replace
+  startingDeadlineSeconds: 100
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      backoffLimit: 3
+      activeDeadlineSeconds: 200
+      template:
+        metadata:
+          labels:
+            cronjob: {{cronjob_name}}
+        spec:
+          restartPolicy: OnFailure
+          containers:
+          - name: {{container_name}}
+            image: {{image}}
+            command: ["{{command}}"]
+            args: ["{{arg1}}", "{{arg2}}"]
+            resources:
+              requests:
+                cpu: "250m"
+                memory: "256Mi"
+              limits:
+                cpu: "500m"
+                memory: "512Mi"

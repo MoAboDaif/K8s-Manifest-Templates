@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{deployment_name}}
+  namespace: {{namespace}}
+  labels:
+    app: {{app_label}}
+spec:
+  replicas: {{replica_count}}
+  selector:
+    matchLabels:
+      app: {{app_label}}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 1
+  revisionHistoryLimit: 10
+  progressDeadlineSeconds: 600
+  template:
+    metadata:
+      labels:
+        app: {{app_label}}
+      annotations:
+        checksum/config: "{{ config_checksum }}"
+    spec:
+      nodeSelector:
+        disktype: ssd
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: arch
+                operator: In
+                values:
+                - amd64
+                - arm64
+      tolerations:
+      - key: "key"
+        operator: "Equal"
+        value: "value"
+        effect: "NoSchedule"
+      containers:
+      - name: {{container_name}}
+        image: {{image}}
+        command: ["/start.sh"]
+        args: ["--flag", "value"]
+        ports:
+        - containerPort: {{container_port}}
+          protocol: TCP
+        env:
+        - name: ENV_VAR
+          value: "value"
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+        volumeMounts:
+        - name: config
+          mountPath: /etc/config
+      volumes:
+      - name: config
+        configMap:
+          name: {{configmap_name}}

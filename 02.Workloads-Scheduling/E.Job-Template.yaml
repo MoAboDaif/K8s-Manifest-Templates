@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{job_name}}
+  namespace: {{namespace}}
+  labels:
+    job: {{job_name}}
+spec:
+  completions: {{completions}}
+  parallelism: {{parallelism}}
+  activeDeadlineSeconds: 300
+  backoffLimit: 4
+  template:
+    metadata:
+      labels:
+        job: {{job_name}}
+    spec:
+      restartPolicy: OnFailure
+      containers:
+      - name: {{container_name}}
+        image: {{image}}
+        command: ["{{command}}"]
+        args: ["{{arg1}}", "{{arg2}}"]
+        env:
+        - name: ENV_VAR
+          value: "value"

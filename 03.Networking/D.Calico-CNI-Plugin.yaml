@@ -1,0 +1,38 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: calico-node
+  namespace: kube-system
+  labels:
+    k8s-app: calico-node
+spec:
+  selector:
+    matchLabels:
+      k8s-app: calico-node
+  template:
+    metadata:
+      labels:
+        k8s-app: calico-node
+    spec:
+      hostNetwork: true
+      tolerations:
+      - operator: "Exists"
+      containers:
+      - name: calico-node
+        image: calico/node:{{calico_version}}
+        env:
+        - name: CALICO_NETWORKING_BACKEND
+          value: "bird"
+        - name: CLUSTER_TYPE
+          value: "k8s,bgp"
+        - name: IP_AUTODETECTION_METHOD
+          value: "interface={{network_interface}}"
+        volumeMounts:
+        - mountPath: /var/run/calico
+          name: var-run-calico
+        securityContext:
+          privileged: true
+      volumes:
+      - name: var-run-calico
+        hostPath:
+          path: /var/run/calico

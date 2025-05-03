@@ -1,0 +1,16 @@
+apiVersion: serving.kubeflow.org/v1beta1
+kind: InferenceService
+metadata:
+  name: {{inferenceservice_name}}
+  namespace: kubeflow
+spec:
+  predictor:
+    tensorflow:
+      storageUri: "gs://{{model_bucket}}/{{model_path}}"
+      resources:
+        limits:
+          cpu: "1"
+          memory: "2Gi"
+        requests:
+          cpu: "500m"
+          memory: "1Gi"

@@ -1,0 +1,16 @@
+apiVersion: krew.googlecontainertools.github.com/v1alpha2
+kind: Plugin
+metadata:
+  name: {{plugin_name}}
+spec:
+  version: "v1.0.0"
+  homepage: "https://github.com/{{user}}/{{plugin_repo}}"
+  shortDescription: "A custom kubectl plugin for {{plugin_description}}"
+  platforms:
+  - selector:
+      matchLabels:
+        os: linux
+        arch: amd64
+    uri: "https://github.com/{{user}}/{{plugin_repo}}/releases/download/v1.0.0/{{plugin_name}}_linux_amd64.tar.gz"
+    checksum: "sha256:{{checksum}}"
+    bin: "{{plugin_name}}"

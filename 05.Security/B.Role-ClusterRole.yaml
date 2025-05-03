@@ -1,0 +1,22 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role # Alternatively, use ClusterRole for cluster-wide permissions
+metadata:
+  name: {{role_name}}
+  namespace: {{namespace}} # Not needed for ClusterRole
+rules:
+- apiGroups: [""]
+  resources:
+  - pods
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups: ["apps"]
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+  - update

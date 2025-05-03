@@ -1,0 +1,10 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{pdb_name}}
+  namespace: {{namespace}}
+spec:
+  minAvailable: {{min_available}}  # alternatively, maxUnavailable: can be defined
+  selector:
+    matchLabels:
+      app: {{app_label}}

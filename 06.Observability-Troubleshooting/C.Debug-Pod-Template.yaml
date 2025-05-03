@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: debug-pod
+  namespace: default
+  labels:
+    purpose: debug
+spec:
+  restartPolicy: Never
+  containers:
+  - name: debugger
+    image: busybox
+    command: [ "sleep", "3600" ]
+    securityContext:
+      privileged: true
+  # Ephemeral containers can be added via kubectl debug if needed.

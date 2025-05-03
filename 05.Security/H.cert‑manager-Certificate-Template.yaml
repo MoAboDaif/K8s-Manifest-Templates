@@ -1,0 +1,22 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{certificate_name}}
+  namespace: {{namespace}}
+spec:
+  secretName: {{tls_secret_name}}    # The name of the secret where the TLS cert/key will be stored
+  issuerRef:
+    name: {{issuer_name}}            # Reference to your Issuer or ClusterIssuer
+    kind: ClusterIssuer              # Use "Issuer" for namespace-scoped issuers if applicable
+  commonName: "{{common_name}}"       # The primary domain for the certificate
+  dnsNames:
+    - {{dns_name}}                  # Additional FQDNs; list as many as needed
+  ipAddresses:
+    - {{ip_address}}                # Optional: include any IP addresses if required
+  duration: 2160h                   # Certificate duration, e.g., 90 days (2160h)
+  renewBefore: 360h                 # Begin renewal 15 days before expiration (360h)
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth

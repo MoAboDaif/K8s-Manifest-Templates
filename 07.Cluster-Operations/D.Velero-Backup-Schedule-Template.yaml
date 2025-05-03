@@ -1,0 +1,25 @@
+apiVersion: velero.io/v1
+kind: BackupStorageLocation
+metadata:
+  name: default
+  namespace: velero
+spec:
+  provider: {{provider}}  # e.g., aws, gcp, azure
+  objectStorage:
+    bucket: {{bucket_name}}
+    prefix: backups
+  config:
+    region: {{region}}
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: daily-backup
+  namespace: velero
+spec:
+  schedule: "0 2 * * *"
+  template:
+    ttl: 720h0m0s
+    includedNamespaces:
+    - "*"
+    storageLocation: default
