@@ -1,0 +1,419 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Parameterized VPC with 3 EC2 instances in public subnets (Ubuntu 22.04 LTS via SSM),
+  EIPs, and security groups
+
+Parameters:
+
+  # --------------------------------------------------------------------------
+  # General / Tagging
+  # --------------------------------------------------------------------------
+  ClusterName:
+    Type: String
+    Default: Kubernetes
+    Description: Logical name prefix for all resources (e.g. cluster name)
+
+  Environment:
+    Type: String
+    Default: dev
+    Description: Deployment environment (e.g. dev, test, prod)
+
+  Purpose:
+    Type: String
+    Default: Kubernetes
+    Description: Purpose tag for resources
+
+  # --------------------------------------------------------------------------
+  # Networking
+  # --------------------------------------------------------------------------
+  VpcCidr:
+    Type: String
+    Default: 10.10.0.0/16
+    Description: CIDR block for the VPC
+
+  PublicSubnetCidr1:
+    Type: String
+    Default: 10.10.10.0/24
+    Description: CIDR for first public subnet
+
+  PublicSubnetCidr2:
+    Type: String
+    Default: 10.10.20.0/24
+    Description: CIDR for second public subnet
+
+  PublicSubnetCidr3:
+    Type: String
+    Default: 10.10.30.0/24
+    Description: CIDR for third public subnet
+
+  SSHLocation:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR range to allow SSH access
+
+  # --------------------------------------------------------------------------
+  # EC2 / AMI / Keys
+  # --------------------------------------------------------------------------
+  KeyName:
+    Type: AWS::EC2::KeyPair::KeyName
+    Description: Name of an existing EC2 KeyPair to enable SSH access
+    Default: Kubernetes
+
+  ImageID:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Description: SSM Parameter name for the AMI ID (Ubuntu 22.04 LTS)
+    Default: /aws/service/canonical/ubuntu/server/22.04/stable/current/amd64/hvm/ebs-gp2/ami-id
+
+  InstanceType:
+    Type: String
+    Default: t2.large
+    Description: EC2 Instance type for all nodes
+
+  # --------------------------------------------------------------------------
+  # Static IPs for Instances (private)
+  # --------------------------------------------------------------------------
+  Master1PrivateIp:
+    Type: String
+    Default: 10.10.10.10
+    Description: Private IP for master node #1
+
+  Node1PrivateIp:
+    Type: String
+    Default: 10.10.20.20
+    Description: Private IP for master node #2
+
+  Node2PrivateIp:
+    Type: String
+    Default: 10.10.30.30
+    Description: Private IP for worker node #1
+
+Mappings:
+  # Map logical AZ index to CloudFormation getAZs index
+  AZIndex:
+    '1': { 'idx': 0 }
+    '2': { 'idx': 1 }
+    '3': { 'idx': 2 }
+
+Resources:
+
+  # --------------------------------------------------------------------------
+  # VPC, IGW, Routing
+  # --------------------------------------------------------------------------
+  MyVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-VPC"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-IGW"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  AttachGateway:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref MyVPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    DependsOn: AttachGateway
+    Properties:
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-Public-RT"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  # --------------------------------------------------------------------------
+  # Public Subnets & Associations
+  # --------------------------------------------------------------------------
+  SubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PublicSubnetCidr1
+      AvailabilityZone: !Select [ !FindInMap [AZIndex, '1', idx], !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-Public-1"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  SubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PublicSubnetCidr2
+      AvailabilityZone: !Select [ !FindInMap [AZIndex, '2', idx], !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-Public-2"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  SubnetC:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref MyVPC
+      CidrBlock: !Ref PublicSubnetCidr3
+      AvailabilityZone: !Select [ !FindInMap [AZIndex, '3', idx], !GetAZs '' ]
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-Public-3"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  SubnetARouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  SubnetBRouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+  SubnetCRouteAssoc:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref SubnetC
+      RouteTableId: !Ref PublicRouteTable
+
+  # --------------------------------------------------------------------------
+  # Security Groups
+  # --------------------------------------------------------------------------
+  SGSelf:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow all traffic within this security group
+      VpcId: !Ref MyVPC
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-sg-self"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  SGSelfIngress:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref SGSelf
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref SGSelf
+
+  SGSSH:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow SSH inbound
+      VpcId: !Ref MyVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref SSHLocation
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-sg-ssh"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  # --------------------------------------------------------------------------
+  # Elastic IPs
+  # --------------------------------------------------------------------------
+  EIP1:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  EIP2:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  EIP3:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  # --------------------------------------------------------------------------
+  # EC2 Instances
+  # --------------------------------------------------------------------------
+  InstanceMaster1:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageID
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref SubnetA
+          PrivateIpAddress: !Ref Master1PrivateIp
+          AssociatePublicIpAddress: true
+          GroupSet:
+            - !Ref SGSelf
+            - !Ref SGSSH
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt-get update && apt-get upgrade -y
+          hostnamectl set-hostname ${ClusterName}-master-1
+          cat <<EOF >> /etc/hosts
+          ${Master1PrivateIp} ${ClusterName}-master-1.local ${ClusterName}-master-1
+          ${Node1PrivateIp}    ${ClusterName}-node-1.local   ${ClusterName}-node-1
+          ${Node2PrivateIp}    ${ClusterName}-node-2.local   ${ClusterName}-node-2
+          EOF
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-master-1"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  InstanceNode1:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageID
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref SubnetB
+          PrivateIpAddress: !Ref Node1PrivateIp
+          AssociatePublicIpAddress: true
+          GroupSet:
+            - !Ref SGSelf
+            - !Ref SGSSH
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt-get update && apt-get upgrade -y
+          hostnamectl set-hostname ${ClusterName}-node-1
+          cat <<EOF >> /etc/hosts
+          ${Master1PrivateIp} ${ClusterName}-master-1.local ${ClusterName}-master-1
+          ${Node1PrivateIp}    ${ClusterName}-node-1.local   ${ClusterName}-node-1
+          ${Node2PrivateIp}    ${ClusterName}-node-2.local   ${ClusterName}-node-2
+          EOF
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-node-1"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  InstanceNode2:
+    Type: AWS::EC2::Instance
+    Properties:
+      KeyName: !Ref KeyName
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref ImageID
+      NetworkInterfaces:
+        - DeviceIndex: 0
+          SubnetId: !Ref SubnetC
+          PrivateIpAddress: !Ref Node2PrivateIp
+          AssociatePublicIpAddress: true
+          GroupSet:
+            - !Ref SGSelf
+            - !Ref SGSSH
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          apt-get update && apt-get upgrade -y
+          hostnamectl set-hostname ${ClusterName}-node-2
+          cat <<EOF >> /etc/hosts
+          ${Master1PrivateIp} ${ClusterName}-master-1.local ${ClusterName}-master-1
+          ${Node1PrivateIp}    ${ClusterName}-node-1.local   ${ClusterName}-node-1
+          ${Node2PrivateIp}    ${ClusterName}-node-2.local   ${ClusterName}-node-2
+          EOF
+      Tags:
+        - Key: Name
+          Value: !Sub "${ClusterName}-node-2"
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Purpose
+          Value: !Ref Purpose
+
+  # --------------------------------------------------------------------------
+  # EIP Associations
+  # --------------------------------------------------------------------------
+  Assoc1:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt EIP1.AllocationId
+      InstanceId: !Ref InstanceMaster1
+
+  Assoc2:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt EIP2.AllocationId
+      InstanceId: !Ref InstanceNode1
+
+  Assoc3:
+    Type: AWS::EC2::EIPAssociation
+    Properties:
+      AllocationId: !GetAtt EIP3.AllocationId
+      InstanceId: !Ref InstanceNode2
+
+Outputs:
+
+  VpcId:
+    Description: VPC ID
+    Value: !Ref MyVPC
+
+  PublicSubnets:
+    Description: Comma-separated list of public subnet IDs
+    Value: !Join [ ',', [ !Ref SubnetA, !Ref SubnetB, !Ref SubnetC ] ]
+
+  Master1EIP:
+    Description: Public IP of master-1
+    Value: !Ref EIP1
+
+  Node1EIP:
+    Description: Public IP of node-1
+    Value: !Ref EIP2
+
+  Node2EIP:
+    Description: Public IP of node-2
+    Value: !Ref EIP3
